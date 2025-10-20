@@ -1,0 +1,29 @@
+# Arquivo de segredos
+.env
+
+# Arquivos de cache e compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pastas de ambiente virtual
+venv/
+.venv/
+env/
+.env/
+
+# Arquivos de IDEs e editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Arquivos de banco de dados locais
+*.db
+
+# Chaves de criptografia locais
+.encryption_key
