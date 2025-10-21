@@ -8,6 +8,8 @@ Este projeto é um sistema de automação inteligente projetado para processar n
 * **Processamento Inteligente:** Extração automática de todos os dados relevantes do XML da NF-e, incluindo itens, valores e impostos.
 * **Dashboard Interativo:** Uma interface web criada com Streamlit para visualização de métricas, gráficos e análise detalhada das notas.
 * **Chat Fiscal com IA:** Converse com seus dados! Faça perguntas em português sobre seus gastos, fornecedores e produtos, com respostas geradas pela API do Google Gemini.
+* **Sistema de Autenticação:** Controle de acesso com login/logout, sessões seguras e diferentes níveis de permissão.
+* **Gerenciamento de Usuários:** Interface administrativa para criar, listar, ativar/desativar usuários e resetar senhas.
 * **Armazenamento na Nuvem:** Utiliza um banco de dados PostgreSQL robusto e gratuito hospedado na plataforma Render.com.
 * **Segurança Avançada:** Sistema completo de segurança com validação XML, sanitização de dados, auditoria, rate limiting e gerenciamento seguro de credenciais.
 
@@ -70,9 +72,8 @@ Siga os passos abaixo para ter o projeto rodando em sua máquina.
 Clone este repositório para a sua máquina local:
 
 ```bash
-git clone https://github.com/ivanil2603/Agentech_Fiscal.git
-cd Agentech_Fiscal
-
+git clone https://github.com/CamilaFreitasX/agentechajustado.git
+cd agentechajustado
 ```
 
 ### Etapa 3: Instalar as Dependências
@@ -187,33 +188,46 @@ MAX_FILE_SIZE_MB=50
 
 **Nota:** Estas configurações são opcionais e o sistema funcionará com valores padrão se não forem especificadas.
 
-### Etapa 5: Preparar o Banco de Dados
-Com o arquivo .env preenchido, execute o script abaixo para criar as tabelas no seu banco de dados na Render.
+### Etapa 5: Configurar o Sistema
+Com o arquivo .env preenchido, o sistema criará automaticamente as tabelas necessárias no banco de dados na primeira execução.
 
-```Bash
+**Importante:** O sistema inclui autenticação de usuários. Na primeira execução, será criado automaticamente um usuário administrador padrão:
+- **Usuário:** `admin`
+- **Senha:** `admin123`
 
-python reset_database.py
-```
-O script pedirá uma confirmação (SIM) antes de proceder.
+⚠️ **Recomendação de Segurança:** Altere a senha padrão imediatamente após o primeiro login através da funcionalidade de gerenciamento de usuários.
 
 ### ▶️ Como Executar a Aplicação
-A aplicação funciona com dois processos rodando simultaneamente em terminais separados.
 
-Terminal 1: O Robô Agendador
-Este terminal executa o robô que verifica os e-mails e alimenta o banco de dados. Você o inicia uma vez e pode deixá-lo rodando em segundo plano.
+#### Opção 1: Aplicação Completa com Autenticação (Recomendado)
+Execute o sistema principal com autenticação e gerenciamento de usuários:
 
-```Bash
+```bash
+streamlit run nf_processor_with_auth.py --server.port 8505
+```
 
+Após executar, acesse: **http://localhost:8505**
+
+**Primeiro Acesso:**
+1. Faça login com as credenciais padrão: `admin` / `admin123`
+2. Vá para a aba "👥 Gerenciar Usuários" para alterar a senha
+3. Crie novos usuários conforme necessário
+
+#### Opção 2: Robô Agendador (Opcional)
+Para processamento automático de e-mails, execute em terminal separado:
+
+```bash
 python scheduler.py
 ```
-Terminal 2: O Dashboard
-Este terminal inicia a interface web que você acessará pelo navegador.
 
-```Bash
+Este processo verifica e-mails a cada 5 minutos e pode rodar em segundo plano.
 
-streamlit run nf_processor.py
-```
-Após executar, o terminal fornecerá uma URL local (geralmente http://localhost:8501) para você abrir no seu navegador. O dashboard se atualizará automaticamente a cada 10 minutos.
+#### Funcionalidades Disponíveis:
+- **📊 Dashboard:** Visualização de métricas e gráficos
+- **📁 Upload:** Envio manual de arquivos XML/PDF
+- **🤖 Chat Fiscal:** Análise de dados com IA
+- **👥 Gerenciar Usuários:** Criação e administração de usuários (apenas admins)
+- **📧 Processar E-mails:** Verificação manual da caixa de entrada
 
 
 
