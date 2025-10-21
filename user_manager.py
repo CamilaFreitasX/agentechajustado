@@ -13,7 +13,7 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from security_utils import SecurityConfig
-from secure_config import CredentialManager
+from secure_config import CredentialManager, get_secure_config
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -24,7 +24,7 @@ class UserManager:
     def __init__(self):
         self.database_url = os.getenv('DATABASE_URL', 'sqlite:///notas_fiscais.db')
         self.engine = create_engine(self.database_url)
-        self.security_config = SecurityConfig()
+        self.security_config = get_secure_config()
         self.credential_manager = CredentialManager()
         self._create_users_table_if_not_exists()
         
@@ -32,21 +32,41 @@ class UserManager:
         """Cria a tabela de usuários se ela não existir"""
         try:
             with self.engine.connect() as conn:
-                conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS usuarios (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username VARCHAR(50) UNIQUE NOT NULL,
-                    email VARCHAR(100) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    nome_completo VARCHAR(255),
-                    ativo BOOLEAN DEFAULT 1,
-                    admin BOOLEAN DEFAULT 0,
-                    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    ultimo_login DATETIME,
-                    tentativas_login INTEGER DEFAULT 0,
-                    bloqueado_ate DATETIME
-                )
-                """))
+                # Detectar tipo de banco de dados
+                if 'postgresql' in self.database_url:
+                    # Sintaxe PostgreSQL
+                    conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS usuarios (
+                        id SERIAL PRIMARY KEY,
+                        username VARCHAR(50) UNIQUE NOT NULL,
+                        email VARCHAR(100) UNIQUE NOT NULL,
+                        password_hash VARCHAR(255) NOT NULL,
+                        nome_completo VARCHAR(255),
+                        ativo BOOLEAN DEFAULT TRUE,
+                        admin BOOLEAN DEFAULT FALSE,
+                        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        ultimo_login TIMESTAMP,
+                        tentativas_login INTEGER DEFAULT 0,
+                        bloqueado_ate TIMESTAMP
+                    )
+                    """))
+                else:
+                    # Sintaxe SQLite
+                    conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS usuarios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username VARCHAR(50) UNIQUE NOT NULL,
+                        email VARCHAR(100) UNIQUE NOT NULL,
+                        password_hash VARCHAR(255) NOT NULL,
+                        nome_completo VARCHAR(255),
+                        ativo BOOLEAN DEFAULT 1,
+                        admin BOOLEAN DEFAULT 0,
+                        data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        ultimo_login DATETIME,
+                        tentativas_login INTEGER DEFAULT 0,
+                        bloqueado_ate DATETIME
+                    )
+                    """))
                 conn.commit()
         except Exception as e:
             print(f"Erro ao criar tabela de usuários: {e}")
@@ -282,10 +302,17 @@ class UserManager:
         """Desativa um usuário"""
         try:
             with self.engine.connect() as conn:
-                conn.execute(
-                    text("UPDATE usuarios SET ativo = 0 WHERE id = :user_id"),
-                    {"user_id": user_id}
-                )
+                # Usar sintaxe compatível com PostgreSQL e SQLite
+                if 'postgresql' in self.database_url:
+                    conn.execute(
+                        text("UPDATE usuarios SET ativo = FALSE WHERE id = :user_id"),
+                        {"user_id": user_id}
+                    )
+                else:
+                    conn.execute(
+                        text("UPDATE usuarios SET ativo = 0 WHERE id = :user_id"),
+                        {"user_id": user_id}
+                    )
                 conn.commit()
                 
                 return True, "Usuário desativado com sucesso"
@@ -316,9 +343,15 @@ class UserManager:
         """Cria usuário administrador padrão se não existir"""
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    text("SELECT COUNT(*) as count FROM usuarios WHERE admin = 1")
-                )
+                # Usar sintaxe compatível com PostgreSQL e SQLite
+                if 'postgresql' in self.database_url:
+                    result = conn.execute(
+                        text("SELECT COUNT(*) as count FROM usuarios WHERE admin = TRUE")
+                    )
+                else:
+                    result = conn.execute(
+                        text("SELECT COUNT(*) as count FROM usuarios WHERE admin = 1")
+                    )
                 admin_count = result.fetchone()[0]
                 
                 if admin_count == 0:

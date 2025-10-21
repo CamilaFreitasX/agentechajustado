@@ -41,20 +41,30 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NotaFiscal:
     numero: str
+    serie: str
     data_emissao: datetime
     cnpj_emitente: str
     nome_emitente: str
     valor_total: Decimal
-    itens: List[Dict[str, Any]]
+    chave_acesso: str
+    natureza_operacao: str
+    itens: List[Dict[str, Any]] = None
     xml_content: Optional[str] = None
+    
+    def __post_init__(self):
+        if self.itens is None:
+            self.itens = []
     
     def to_dict(self):
         return {
             'numero': self.numero,
+            'serie': self.serie,
             'data_emissao': self.data_emissao.isoformat() if self.data_emissao else None,
             'cnpj_emitente': self.cnpj_emitente,
             'nome_emitente': self.nome_emitente,
             'valor_total': float(self.valor_total),
+            'chave_acesso': self.chave_acesso,
+            'natureza_operacao': self.natureza_operacao,
             'itens': json.dumps(self.itens),
             'xml_content': self.xml_content
         }
@@ -101,6 +111,9 @@ class DatabaseManager:
                     "INFO"
                 )
                 
+                # Criar tabelas se não existirem
+                self._create_tables_if_not_exists()
+                
         except SecureConfigError as e:
             logger.error(f"Erro de configuração segura: {e}")
             SecurityAuditor.log_security_event(
@@ -116,6 +129,83 @@ class DatabaseManager:
                 {"error": str(e)},
                 "CRITICAL"
             )
+            raise
+    
+    def _create_tables_if_not_exists(self):
+        """Cria as tabelas necessárias se elas não existirem"""
+        try:
+            with self.engine.begin() as connection:
+                # Detectar tipo de banco
+                is_postgresql = not self.engine.url.drivername.startswith('sqlite')
+                
+                # Criar tabela notas_fiscais
+                if is_postgresql:
+                    create_notas_fiscais = text("""
+                        CREATE TABLE IF NOT EXISTS notas_fiscais (
+                            id SERIAL PRIMARY KEY,
+                            numero VARCHAR(50) NOT NULL UNIQUE,
+                            data_emissao TIMESTAMP NOT NULL,
+                            cnpj_emitente VARCHAR(18) NOT NULL,
+                            nome_emitente VARCHAR(255) NOT NULL,
+                            valor_total DECIMAL(15,2) NOT NULL,
+                            xml_content TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                else:
+                    create_notas_fiscais = text("""
+                        CREATE TABLE IF NOT EXISTS notas_fiscais (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            numero VARCHAR(50) NOT NULL UNIQUE,
+                            data_emissao TIMESTAMP NOT NULL,
+                            cnpj_emitente VARCHAR(18) NOT NULL,
+                            nome_emitente VARCHAR(255) NOT NULL,
+                            valor_total DECIMAL(15,2) NOT NULL,
+                            xml_content TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                
+                connection.execute(create_notas_fiscais)
+                
+                # Criar tabela itens_nota_fiscal
+                if is_postgresql:
+                    create_itens_nota_fiscal = text("""
+                        CREATE TABLE IF NOT EXISTS itens_nota_fiscal (
+                            id SERIAL PRIMARY KEY,
+                            nota_fiscal_id INTEGER NOT NULL,
+                            codigo VARCHAR(50),
+                            descricao TEXT NOT NULL,
+                            ncm VARCHAR(10),
+                            quantidade DECIMAL(10,3) NOT NULL,
+                            valor_unitario DECIMAL(15,2) NOT NULL,
+                            valor_total DECIMAL(15,2) NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (nota_fiscal_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE
+                        )
+                    """)
+                else:
+                    create_itens_nota_fiscal = text("""
+                        CREATE TABLE IF NOT EXISTS itens_nota_fiscal (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            nota_fiscal_id INTEGER NOT NULL,
+                            codigo VARCHAR(50),
+                            descricao TEXT NOT NULL,
+                            ncm VARCHAR(10),
+                            quantidade DECIMAL(10,3) NOT NULL,
+                            valor_unitario DECIMAL(15,2) NOT NULL,
+                            valor_total DECIMAL(15,2) NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (nota_fiscal_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE
+                        )
+                    """)
+                
+                connection.execute(create_itens_nota_fiscal)
+                
+                logger.info("Tabelas criadas com sucesso (se não existiam)")
+                
+        except Exception as e:
+            logger.error(f"Erro ao criar tabelas: {e}")
             raise
     
     def buscar_dados(self, tabela, filtros=None):
