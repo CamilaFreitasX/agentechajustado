@@ -82,9 +82,12 @@ class XMLSecurityValidator:
     @staticmethod
     def _validate_xml_structure(root: Element) -> bool:
         """Valida a estrutura básica do XML da NF-e"""
-        # Verificar se é um XML de NF-e válido
-        if root.tag not in ['nfeProc', 'NFe']:
-            logger.warning("XML rejeitado: não é uma estrutura de NF-e válida")
+        # Verificar se é um XML de NF-e válido (considerando namespace)
+        valid_tags = ['nfeProc', 'NFe']
+        root_tag_local = root.tag.split('}')[-1] if '}' in root.tag else root.tag
+        
+        if root_tag_local not in valid_tags:
+            logger.warning(f"XML rejeitado: não é uma estrutura de NF-e válida (tag: {root.tag})")
             return False
         
         # Verificar presença de elementos obrigatórios

@@ -32,6 +32,7 @@ from auth_streamlit import auth
 from security_utils import SecurityConfig, DataSanitizer, SecurityAuditor
 from secure_config import get_secure_config, SecureConfigError
 from user_manager import UserManager
+from nf_processor import XMLExtractor, PDFExtractor
 
 load_dotenv()
 
@@ -532,17 +533,6 @@ class Dashboard:
         """Renderiza a visão geral"""
         st.header("📊 Visão Geral do Período")
         
-        # Verificar se houve upload na sessão atual
-        if not st.session_state.get('upload_realizado', False):
-            st.info("📋 Nenhum upload foi realizado nesta sessão.")
-            st.markdown("""
-            ### 🚀 Como começar:
-            1. **Faça upload** de suas notas fiscais na aba 'Upload de Notas'
-            2. **Formatos aceitos**: PDF (DANFE), XML (NFe), CSV ou ZIP
-            3. **Após o upload**, os dados aparecerão automaticamente aqui
-            """)
-            return
-        
         if not st.session_state.data_loaded:
             st.warning("⏳ Carregando dados...")
             return
@@ -551,8 +541,19 @@ class Dashboard:
         
         # Verificar se existem dados para exibir
         if df_notas.empty:
-            st.warning("📅 Nenhuma nota fiscal encontrada para o período selecionado.")
-            st.info("💡 Ajuste o período de filtro para visualizar os dados ou faça upload de novos arquivos na aba 'Upload de Notas'.")
+            # Verificar se há dados no banco total
+            total_notas_banco = st.session_state.get('total_notas_banco', 0)
+            if total_notas_banco > 0:
+                st.warning("📅 Nenhuma nota fiscal encontrada para o período selecionado.")
+                st.info(f"💡 Existem {total_notas_banco} notas no banco. Ajuste o período de filtro para visualizar os dados ou faça upload de novos arquivos na aba 'Upload de Notas'.")
+            else:
+                st.info("📋 Nenhuma nota fiscal encontrada no banco de dados.")
+                st.markdown("""
+                ### 🚀 Como começar:
+                1. **Faça upload** de suas notas fiscais na aba 'Upload de Notas'
+                2. **Formatos aceitos**: PDF (DANFE), XML (NFe), CSV ou ZIP
+                3. **Após o upload**, os dados aparecerão automaticamente aqui
+                """)
             return
         
         # Converter valores para numérico
@@ -628,17 +629,6 @@ class Dashboard:
         """Renderiza análise detalhada"""
         st.header("📄 Análise Detalhada das Notas Fiscais")
         
-        # Verificar se houve upload na sessão atual
-        if not st.session_state.get('upload_realizado', False):
-            st.info("📋 Nenhum upload foi realizado nesta sessão.")
-            st.markdown("""
-            ### 🚀 Como começar:
-            1. **Faça upload** de suas notas fiscais na aba 'Upload de Notas'
-            2. **Formatos aceitos**: PDF (DANFE), XML (NFe), CSV ou ZIP
-            3. **Após o upload**, os dados aparecerão automaticamente aqui
-            """)
-            return
-        
         if not st.session_state.data_loaded:
             st.warning("⏳ Carregando dados...")
             return
@@ -646,7 +636,19 @@ class Dashboard:
         df_notas = st.session_state.df_notas
         
         if df_notas.empty:
-            st.warning("Nenhuma nota fiscal para exibir.")
+            # Verificar se há dados no banco total
+            total_notas_banco = st.session_state.get('total_notas_banco', 0)
+            if total_notas_banco > 0:
+                st.warning("📅 Nenhuma nota fiscal encontrada para o período selecionado.")
+                st.info(f"💡 Existem {total_notas_banco} notas no banco. Ajuste o período de filtro para visualizar os dados.")
+            else:
+                st.info("📋 Nenhuma nota fiscal encontrada no banco de dados.")
+                st.markdown("""
+                ### 🚀 Como começar:
+                1. **Faça upload** de suas notas fiscais na aba 'Upload de Notas'
+                2. **Formatos aceitos**: PDF (DANFE), XML (NFe), CSV ou ZIP
+                3. **Após o upload**, os dados aparecerão automaticamente aqui
+                """)
             return
         
         # Filtros adicionais
@@ -902,46 +904,40 @@ class Dashboard:
                 mime="text/csv"
             )
         
-        # Mostrar informações do banco apenas se houve upload bem-sucedido ou dados já existem
-        if hasattr(st.session_state, 'upload_realizado') and st.session_state.upload_realizado:
-            st.markdown("---")
-            st.subheader("📊 Informações do Banco de Dados")
-            
-            try:
-                todas_notas = self.db_manager.buscar_dados('notas_fiscais', {})
-                if todas_notas:
-                    df_todas = pd.DataFrame(todas_notas)
+        # Mostrar informações do banco se existem dados
+        st.markdown("---")
+        st.subheader("📊 Informações do Banco de Dados")
+        
+        try:
+            todas_notas = self.db_manager.buscar_dados('notas_fiscais', {})
+            if todas_notas:
+                df_todas = pd.DataFrame(todas_notas)
+                
+                # Armazenar total de notas no session_state para uso em outras seções
+                st.session_state.total_notas_banco = len(df_todas)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric("Total de Notas no Banco", len(df_todas))
                     
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.metric("Total de Notas no Banco", len(df_todas))
-                    
-                    with col2:
-                        if 'valor_total' in df_todas.columns:
-                            df_todas['valor_total'] = pd.to_numeric(df_todas['valor_total'], errors='coerce').fillna(0)
-                            total_geral = df_todas['valor_total'].sum()
-                            st.metric("Valor Total Geral", f"R$ {total_geral:,.2f}")
-                    
-                    # Mostrar amostra dos dados
-                    st.subheader("📋 Amostra dos Dados (10 primeiras)")
-                    st.dataframe(df_todas.head(10), use_container_width=True)
-                    
-                else:
-                    st.warning("Nenhuma nota encontrada no banco de dados.")
-                    
-            except Exception as e:
-                st.error(f"Erro ao consultar banco: {e}")
-        else:
-            # Verificar se já existem dados no banco para mostrar uma mensagem informativa
-            try:
-                todas_notas = self.db_manager.buscar_dados('notas_fiscais', {})
-                if todas_notas:
-                    st.info(f"💡 Existem {len(todas_notas)} notas no banco de dados. Faça upload de novos arquivos ou visualize os dados na aba 'Visão Geral'.")
-                else:
-                    st.info("💡 Nenhuma nota fiscal encontrada no banco. Faça upload de seus arquivos para começar a análise.")
-            except Exception as e:
-                st.warning("Não foi possível verificar o status do banco de dados.")
+                with col2:
+                    if 'valor_total' in df_todas.columns:
+                        df_todas['valor_total'] = pd.to_numeric(df_todas['valor_total'], errors='coerce').fillna(0)
+                        total_geral = df_todas['valor_total'].sum()
+                        st.metric("Valor Total Geral", f"R$ {total_geral:,.2f}")
+                
+                # Mostrar amostra dos dados
+                st.subheader("📋 Amostra dos Dados (10 primeiras)")
+                st.dataframe(df_todas.head(10), use_container_width=True)
+                
+            else:
+                st.warning("Nenhuma nota encontrada no banco de dados.")
+                st.session_state.total_notas_banco = 0
+                
+        except Exception as e:
+            st.error(f"Erro ao consultar banco: {e}")
+            st.session_state.total_notas_banco = 0
 
     def render_gerenciar_usuarios(self):
         """Renderiza interface de gerenciamento de usuários (apenas para admins)"""
