@@ -199,6 +199,26 @@ Com o arquivo .env preenchido, o sistema criará automaticamente as tabelas nece
 
 ### ▶️ Como Executar a Aplicação
 
+#### Ambiente Virtual (recomendado)
+Crie e ative um ambiente virtual para isolar dependências:
+
+```bash
+# Windows
+python -m venv .venv
+.venv\\Scripts\\activate
+
+# macOS/Linux
+python -m venv .venv
+source .venv/bin/activate
+
+# Instalar dependências
+pip install -r requirements.txt
+```
+
+#### Banco de Dados
+- Por padrão, o sistema usa **SQLite** local: `DATABASE_URL=sqlite:///notas_fiscais.db` (já presente no `.env.example`).
+- Para produção, configure **PostgreSQL** em `DATABASE_URL` (as tabelas são criadas automaticamente na primeira execução).
+
 #### Opção 1: Aplicação Completa com Autenticação (Recomendado)
 Execute o sistema principal com autenticação e gerenciamento de usuários:
 
@@ -207,6 +227,12 @@ streamlit run nf_processor_with_auth.py --server.port 8505
 ```
 
 Após executar, acesse: **http://localhost:8505**
+
+Dica: se a porta 8505 estiver ocupada ou houver instabilidade, use outra porta ou modo headless:
+
+```bash
+streamlit run nf_processor_with_auth.py --server.port 8506 --server.headless true
+```
 
 **Primeiro Acesso:**
 1. Faça login com as credenciais padrão: `admin` / `admin123`
@@ -221,6 +247,16 @@ python scheduler.py
 ```
 
 Este processo verifica e-mails a cada 5 minutos e pode rodar em segundo plano.
+
+#### Notas sobre Gemini
+- Se `GEMINI_API_KEY` não estiver configurada, apenas as funcionalidades de IA (chat) ficarão indisponíveis; o restante do sistema funciona normalmente.
+
+#### Troubleshooting
+- "Service is unavailable":
+  - Verifique se o terminal mostra "You can now view your Streamlit app...".
+  - Recarregue a página ou altere a porta (`--server.port 8506`).
+  - Certifique-se de que não há outra instância do Streamlit usando a mesma porta.
+- Problemas de e-mail: confirme `IMAP_SERVER=imap.gmail.com` e `IMAP_PORT=993` (padrões já no `.env.example`).
 
 #### Funcionalidades Disponíveis:
 - **📊 Dashboard:** Visualização de métricas e gráficos
