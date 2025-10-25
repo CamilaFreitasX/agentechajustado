@@ -51,6 +51,7 @@ class NotaFiscal:
     natureza_operacao: str
     itens: List[Dict[str, Any]] = None
     xml_content: Optional[str] = None
+    origem: str = 'upload'  # 'email' ou 'upload'
     
     def __post_init__(self):
         if self.itens is None:
@@ -67,7 +68,8 @@ class NotaFiscal:
             'chave_acesso': self.chave_acesso,
             'natureza_operacao': self.natureza_operacao,
             'itens': json.dumps(self.itens),
-            'xml_content': self.xml_content
+            'xml_content': self.xml_content,
+            'origem': self.origem
         }
 
 class DatabaseManager:
@@ -611,6 +613,42 @@ class Dashboard:
                     st.error(f"Erro ao processar datas: {e}")
             else:
                 st.info("Coluna 'data_emissao' não encontrada")
+        
+        # Nova seção: Distribuição por Origem
+        if 'origem' in df_notas.columns:
+            st.markdown("---")
+            st.subheader("📊 Distribuição por Origem")
+            
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                # Gráfico de pizza - Quantidade por origem
+                origem_count = df_notas['origem'].value_counts()
+                if not origem_count.empty:
+                    fig = px.pie(
+                        values=origem_count.values, 
+                        names=origem_count.index,
+                        title="Distribuição de Notas por Origem"
+                    )
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Dados insuficientes para gráfico")
+            
+            with col2:
+                # Gráfico de barras - Valor por origem
+                origem_valor = df_notas.groupby('origem')['valor_total'].sum()
+                if not origem_valor.empty:
+                    fig = px.bar(
+                        x=origem_valor.index,
+                        y=origem_valor.values,
+                        title="Valor Total por Origem",
+                        labels={'x': 'Origem', 'y': 'Valor Total (R$)'}
+                    )
+                    fig.update_layout(height=400)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Dados insuficientes para gráfico")
 
     def render_analise_detalhada(self):
         """Renderiza análise detalhada"""
@@ -639,7 +677,7 @@ class Dashboard:
             return
         
         # Filtros adicionais
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             if 'nome_emitente' in df_notas.columns:
@@ -649,9 +687,16 @@ class Dashboard:
                 fornecedor_selecionado = 'Todos'
         
         with col2:
-            valor_minimo = st.number_input("Valor Mínimo", min_value=0.0, value=0.0)
+            if 'origem' in df_notas.columns:
+                origens = ['Todos'] + list(df_notas['origem'].unique())
+                origem_selecionada = st.selectbox("Filtrar por Origem", origens)
+            else:
+                origem_selecionada = 'Todos'
         
         with col3:
+            valor_minimo = st.number_input("Valor Mínimo", min_value=0.0, value=0.0)
+        
+        with col4:
             valor_maximo = st.number_input("Valor Máximo", min_value=0.0, value=0.0)
         
         # Aplicar filtros
@@ -660,6 +705,9 @@ class Dashboard:
         
         if fornecedor_selecionado != 'Todos':
             df_filtrado = df_filtrado[df_filtrado['nome_emitente'] == fornecedor_selecionado]
+        
+        if origem_selecionada != 'Todos':
+            df_filtrado = df_filtrado[df_filtrado['origem'] == origem_selecionada]
         
         if valor_minimo > 0:
             df_filtrado = df_filtrado[df_filtrado['valor_total'] >= valor_minimo]
@@ -672,7 +720,7 @@ class Dashboard:
         
         if not df_filtrado.empty:
             # Configurar colunas para exibição
-            colunas_exibir = ['numero', 'data_emissao', 'nome_emitente', 'valor_total']
+            colunas_exibir = ['numero', 'data_emissao', 'nome_emitente', 'valor_total', 'origem']
             colunas_disponiveis = [col for col in colunas_exibir if col in df_filtrado.columns]
             
             if colunas_disponiveis:

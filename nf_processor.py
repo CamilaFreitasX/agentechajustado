@@ -701,7 +701,8 @@ class DatabaseManager:
             'valor_pis': float(getattr(nota, 'valor_pis', 0.0)),
             'valor_cofins': float(getattr(nota, 'valor_cofins', 0.0)),
             'xml_original': getattr(nota, 'xml_original', None),
-            'processado_em': getattr(nota, 'processado_em', datetime.now())
+            'processado_em': getattr(nota, 'processado_em', datetime.now()),
+            'origem': getattr(nota, 'origem', 'upload')
         }
         
         logger.info(f"📊 DADOS PREPARADOS PARA INSERÇÃO: {nf_data}")
@@ -715,13 +716,13 @@ class DatabaseManager:
                 valor_total, chave_acesso, natureza_operacao, situacao, 
                 data_vencimento, cnpj_destinatario, nome_destinatario, 
                 valor_icms, valor_ipi, valor_pis, valor_cofins, 
-                xml_original, processado_em
+                xml_original, processado_em, origem
             ) VALUES (
                 :numero, :serie, :data_emissao, :cnpj_emitente, :nome_emitente,
                 :valor_total, :chave_acesso, :natureza_operacao, :situacao,
                 :data_vencimento, :cnpj_destinatario, :nome_destinatario,
                 :valor_icms, :valor_ipi, :valor_pis, :valor_cofins,
-                :xml_original, :processado_em
+                :xml_original, :processado_em, :origem
             ) RETURNING id
         """)
         

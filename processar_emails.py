@@ -161,6 +161,8 @@ def buscar_e_processar_emails():
                     
                     if nota and ValidadorNF.validar_nota_fiscal(nota):
                         try:
+                            # Definir origem como 'email' para notas processadas do email
+                            nota.origem = 'email'
                             db_manager.salvar_nota_fiscal(nota)
                             SecurityAuditor.log_security_event(
                                 "NF_PROCESSED_SUCCESS",
@@ -196,6 +198,8 @@ def buscar_e_processar_emails():
                     nota = PDFExtractor.extrair_dados_pdf(file_content)
                     if nota and ValidadorNF.validar_nota_fiscal(nota):
                         try:
+                            # Definir origem como 'email' para notas processadas do email
+                            nota.origem = 'email'
                             db_manager.salvar_nota_fiscal(nota)
                             SecurityAuditor.log_security_event(
                                 "NF_PROCESSED_SUCCESS",
