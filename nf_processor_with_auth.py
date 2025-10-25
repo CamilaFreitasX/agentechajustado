@@ -422,45 +422,32 @@ class Dashboard:
         if st.session_state.last_load_time:
             st.sidebar.write(f"🕒 Última atualização: {st.session_state.last_load_time.strftime('%H:%M:%S')}")
         
-        # Verificar se usuário é admin para mostrar todas as abas
+        # Todos os usuários têm acesso completo ao sistema
         user_data = auth.get_current_user()
         is_admin = user_data.get('admin', False)
         
-        if is_admin:
-            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-                "📊 Visão Geral", 
-                "📄 Análise Detalhada", 
-                "💬 Chat Fiscal (Gemini)", 
-                "📋 Logs", 
-                "📤 Upload de Notas", 
-                "👥 Gerenciar Usuários"
-            ])
-            
-            with tab1:
-                self.render_visao_geral()
-            with tab2:
-                self.render_analise_detalhada()
-            with tab3:
-                self.render_chat_fiscal()
-            with tab4:
-                self.render_logs()
-            with tab5:
-                self.render_upload_notas()
-            with tab6:
-                self.render_gerenciar_usuarios()
-        else:
-            tab1, tab2, tab3 = st.tabs([
-                "📊 Visão Geral", 
-                "📄 Análise Detalhada", 
-                "💬 Chat Fiscal (Gemini)"
-            ])
-            
-            with tab1:
-                self.render_visao_geral()
-            with tab2:
-                self.render_analise_detalhada()
-            with tab3:
-                self.render_chat_fiscal()
+        # Mostrar todas as abas para todos os usuários
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "📊 Visão Geral", 
+            "📄 Análise Detalhada", 
+            "💬 Chat Fiscal (Gemini)", 
+            "📋 Logs", 
+            "📤 Upload de Notas", 
+            "👥 Gerenciar Usuários"
+        ])
+        
+        with tab1:
+            self.render_visao_geral()
+        with tab2:
+            self.render_analise_detalhada()
+        with tab3:
+            self.render_chat_fiscal()
+        with tab4:
+            self.render_logs()
+        with tab5:
+            self.render_upload_notas()
+        with tab6:
+            self.render_gerenciar_usuarios()
 
     def carregar_dados(self):
         """Carrega dados do banco com cache inteligente"""
@@ -940,13 +927,18 @@ class Dashboard:
             st.session_state.total_notas_banco = 0
 
     def render_gerenciar_usuarios(self):
-        """Renderiza interface de gerenciamento de usuários (apenas para admins)"""
+        """Renderiza interface de gerenciamento de usuários (acesso para todos os usuários)"""
         st.header("👥 Gerenciamento de Usuários")
         
-        # Verificar se é admin
-        if not auth.is_admin():
-            st.error("❌ Acesso negado. Apenas administradores podem acessar esta seção.")
-            return
+        # Todos os usuários podem acessar esta seção
+        user_data = auth.get_current_user()
+        is_admin = user_data.get('admin', False)
+        
+        # Mostrar informação sobre o tipo de usuário
+        if is_admin:
+            st.info("👑 Você está logado como administrador")
+        else:
+            st.info("👤 Você está logado como usuário padrão")
         
         # Abas para diferentes ações
         tab_listar, tab_criar, tab_gerenciar = st.tabs(["📋 Listar Usuários", "➕ Criar Usuário", "⚙️ Gerenciar"])
