@@ -193,7 +193,7 @@ Com o arquivo .env preenchido, o sistema criará automaticamente as tabelas nece
 
 **Importante:** O sistema inclui autenticação de usuários. Na primeira execução, será criado automaticamente um usuário administrador padrão:
 - **Usuário:** `admin`
-- **Senha:** `admin123`
+- **Senha:** `Admin@123`
 
 ⚠️ **Recomendação de Segurança:** Altere a senha padrão imediatamente após o primeiro login através da funcionalidade de gerenciamento de usuários.
 
@@ -226,16 +226,23 @@ Execute o sistema principal com autenticação e gerenciamento de usuários:
 streamlit run nf_processor_with_auth.py --server.port 8505
 ```
 
+**Em caso de erro com o comando acima, use:**
+```bash
+python -m streamlit run nf_processor_with_auth.py --server.port 8505
+```
+
 Após executar, acesse: **http://localhost:8505**
 
 Dica: se a porta 8505 estiver ocupada ou houver instabilidade, use outra porta ou modo headless:
 
 ```bash
 streamlit run nf_processor_with_auth.py --server.port 8506 --server.headless true
+# ou
+python -m streamlit run nf_processor_with_auth.py --server.port 8506 --server.headless true
 ```
 
 **Primeiro Acesso:**
-1. Faça login com as credenciais padrão: `admin` / `admin123`
+1. Faça login com as credenciais padrão: `admin` / `Admin@123`
 2. Vá para a aba "👥 Gerenciar Usuários" para alterar a senha
 3. Crie novos usuários conforme necessário
 
@@ -252,11 +259,13 @@ Este processo verifica e-mails a cada 5 minutos e pode rodar em segundo plano.
 - Se `GEMINI_API_KEY` não estiver configurada, apenas as funcionalidades de IA (chat) ficarão indisponíveis; o restante do sistema funciona normalmente.
 
 #### Troubleshooting
-- "Service is unavailable":
+- **Erro ao executar Streamlit:**
+  - Se `streamlit run` não funcionar, use: `python -m streamlit run nf_processor_with_auth.py --server.port 8505`
+- **"Service is unavailable":**
   - Verifique se o terminal mostra "You can now view your Streamlit app...".
   - Recarregue a página ou altere a porta (`--server.port 8506`).
   - Certifique-se de que não há outra instância do Streamlit usando a mesma porta.
-- Problemas de e-mail: confirme `IMAP_SERVER=imap.gmail.com` e `IMAP_PORT=993` (padrões já no `.env.example`).
+- **Problemas de e-mail:** confirme `IMAP_SERVER=imap.gmail.com` e `IMAP_PORT=993` (padrões já no `.env.example`).
 
 #### Funcionalidades Disponíveis:
 - **📊 Dashboard:** Visualização de métricas e gráficos
